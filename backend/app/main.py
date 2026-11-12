@@ -5,7 +5,7 @@ from app.core.config import settings
 from app.db.connection import mongodb
 from app.db.init_db import initialize_database
 from app.api.routes.health import router as health_router
-
+from app.api.routes.organizations import router as organization_router
 
 
 @asynccontextmanager
@@ -55,3 +55,8 @@ async def root():
         "message": "Welcome to Office System HRMS",
         "version": settings.APP_VERSION
     }
+
+app.include_router(
+    organization_router,
+    prefix=settings.API_V1_PREFIX
+)
