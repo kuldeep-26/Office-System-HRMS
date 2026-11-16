@@ -11,6 +11,14 @@ class Settings(BaseSettings):
     MONGODB_URI: str = "mongodb://localhost:27017"
     MONGODB_DATABASE: str = "office_system_hrms"
 
+    # JWT Authentication Settings
+    JWT_SECRET_KEY: str | None = None
+    JWT_ISSUER: str = "office-system"
+    JWT_AUDIENCE: str = "office-system-api"
+
+    ACCESS_TOKEN_MINUTES: int = 15
+    REFRESH_TOKEN_DAYS: int = 30
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
