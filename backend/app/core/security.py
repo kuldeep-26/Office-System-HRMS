@@ -126,3 +126,77 @@ def decode_access_token(token: str) -> dict[str, Any]:
         )
 
     return payload
+
+
+
+# --------------------------------------------------
+# PLATFORM ADMIN ACCESS TOKEN
+# --------------------------------------------------
+
+def create_platform_access_token(
+    admin_id: str,
+    expires_delta: timedelta | None = None
+) -> str:
+
+    now = datetime.now(timezone.utc)
+
+    if expires_delta is None:
+        expires_delta = timedelta(
+            minutes=settings.ACCESS_TOKEN_MINUTES
+        )
+
+    expire = now + expires_delta
+
+    payload = {
+        "sub": admin_id,
+        "scope": "platform",
+        "type": "platform_access",
+        "iat": now,
+        "exp": expire,
+        "iss": settings.JWT_ISSUER,
+        "aud": settings.JWT_AUDIENCE,
+    }
+
+    return jwt.encode(
+        payload,
+        get_jwt_secret(),
+        algorithm="HS256"
+    )
+
+
+# --------------------------------------------------
+# PLATFORM ADMIN TOKEN VALIDATION
+# --------------------------------------------------
+
+def decode_platform_access_token(
+    token: str
+) -> dict[str, Any]:
+
+    payload = jwt.decode(
+        token,
+        get_jwt_secret(),
+        algorithms=["HS256"],
+        issuer=settings.JWT_ISSUER,
+        audience=settings.JWT_AUDIENCE,
+        options={
+            "require": [
+                "exp",
+                "iat",
+                "sub",
+                "iss",
+                "aud",
+                "scope",
+                "type"
+            ]
+        }
+    )
+
+    if (
+        payload.get("type") != "platform_access"
+        or payload.get("scope") != "platform"
+    ):
+        raise jwt.InvalidTokenError(
+            "Invalid platform access token"
+        )
+
+    return payload

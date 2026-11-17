@@ -4,9 +4,11 @@ from fastapi import FastAPI
 from app.core.config import settings
 from app.db.connection import mongodb
 from app.db.init_db import initialize_database
+
 from app.api.routes.health import router as health_router
 from app.api.routes.organizations import router as organization_router
-
+from app.api.routes.auth import router as auth_router
+from app.api.routes.platform_auth import router as platform_auth_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -58,5 +60,15 @@ async def root():
 
 app.include_router(
     organization_router,
+    prefix=settings.API_V1_PREFIX
+)
+
+app.include_router(
+    auth_router,
+    prefix=settings.API_V1_PREFIX
+)
+
+app.include_router(
+    platform_auth_router,
     prefix=settings.API_V1_PREFIX
 )

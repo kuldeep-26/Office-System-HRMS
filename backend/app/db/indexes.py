@@ -28,7 +28,20 @@ async def create_database_indexes(db):
         name="users_by_org_status"
     )
 
-    # 3. Employees
+    # 3. Platform Admins
+    await db.platform_admins.create_index(
+        [("email", 1)],
+        unique=True,
+        name="unique_platform_admin_email"
+    )
+
+    await db.platform_admins.create_index(
+        [("status", 1)],
+        name="platform_admins_by_status"
+    )
+
+
+    # 4. Employees
     await db.employees.create_index(
         [
             ("organization_id", 1),
@@ -46,7 +59,7 @@ async def create_database_indexes(db):
         name="employees_by_org_status"
     )
 
-    # 4. Departments
+    # 5. Departments
     await db.departments.create_index(
         [
             ("organization_id", 1),
@@ -56,7 +69,7 @@ async def create_database_indexes(db):
         name="unique_department_name_per_org"
     )
 
-    # 5. Designations
+    # 6. Designations
     await db.designations.create_index(
         [
             ("organization_id", 1),
@@ -66,7 +79,7 @@ async def create_database_indexes(db):
         name="unique_designation_name_per_org"
     )
 
-    # 6. Branches
+    # 7. Branches
     await db.branches.create_index(
         [
             ("organization_id", 1),
@@ -76,7 +89,7 @@ async def create_database_indexes(db):
         name="unique_branch_name_per_org"
     )
 
-    # 7. Roles
+    # 8. Roles
     await db.roles.create_index(
         [
             ("scope", 1),
@@ -86,14 +99,14 @@ async def create_database_indexes(db):
         name="unique_role_per_scope"
     )
 
-    # 8. Permissions
+    # 9. Permissions
     await db.permissions.create_index(
         [("permission_key", 1)],
         unique=True,
         name="unique_permission_key"
     )
 
-    # 9. Attendance
+    # 10. Attendance
     await db.attendance_records.create_index(
         [
             ("organization_id", 1),
@@ -115,7 +128,7 @@ async def create_database_indexes(db):
         name="unique_attendance_idempotency"
     )
 
-    # 10. Face enrollments
+    # 11. Face enrollments
     await db.face_enrollments.create_index(
         [
             ("organization_id", 1),
@@ -133,7 +146,7 @@ async def create_database_indexes(db):
         name="face_enrollment_by_org_status"
     )
 
-    # 11. Leave requests
+    # 12. Leave requests
     await db.leave_requests.create_index(
         [
             ("organization_id", 1),
@@ -152,7 +165,7 @@ async def create_database_indexes(db):
         name="leave_by_org_status"
     )
 
-    # 12. Payroll
+    # 13. Payroll
     await db.payroll_runs.create_index(
         [
             ("organization_id", 1),
@@ -162,7 +175,7 @@ async def create_database_indexes(db):
         name="payroll_by_org_period_status"
     )
 
-    # 13. Documents
+    # 14. Documents
     await db.documents.create_index(
         [
             ("organization_id", 1),
@@ -172,7 +185,7 @@ async def create_database_indexes(db):
         name="documents_by_owner_category"
     )
 
-    # 14. Tasks
+    # 15. Tasks
     await db.tasks.create_index(
         [
             ("organization_id", 1),
@@ -182,7 +195,7 @@ async def create_database_indexes(db):
         name="tasks_by_assignee_due_date"
     )
 
-    # 15. Projects
+    # 16. Projects
     await db.projects.create_index(
         [
             ("organization_id", 1),
@@ -191,7 +204,7 @@ async def create_database_indexes(db):
         name="projects_by_org_status"
     )
 
-    # 16. Notifications
+    # 17. Notifications
     await db.notifications.create_index(
         [
             ("organization_id", 1),
@@ -201,7 +214,7 @@ async def create_database_indexes(db):
         name="notifications_by_recipient"
     )
 
-    # 17. Refresh token sessions
+    # 18. Refresh token sessions
     await db.refresh_token_sessions.create_index(
         [("token_hash", 1)],
         unique=True,
@@ -216,7 +229,7 @@ async def create_database_indexes(db):
         name="refresh_sessions_by_user_expiry"
     )
 
-    # 18. Audit logs
+    # 19. Audit logs
     await db.audit_logs.create_index(
         [
             ("organization_id", 1),

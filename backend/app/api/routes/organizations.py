@@ -10,11 +10,17 @@ from app.schemas.organization import (
 from app.services.organization_service import (
     OrganizationService
 )
+from app.api.dependencies.platform_auth import (
+    get_current_platform_admin
+)
 
 
 router = APIRouter(
     prefix="/organizations",
-    tags=["Organizations"]
+    tags=["Organizations"],
+    dependencies=[
+        Depends(get_current_platform_admin)
+    ]
 )
 
 
