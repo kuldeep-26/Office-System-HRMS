@@ -14,6 +14,14 @@ from app.api.dependencies.platform_auth import (
     get_current_platform_admin
 )
 
+from app.schemas.organization_admin import (
+    OrganizationAdminCreateRequest,
+    OrganizationAdminResponse
+)
+
+from app.services.organization_admin_service import (
+    OrganizationAdminService
+)
 
 router = APIRouter(
     prefix="/organizations",
@@ -182,4 +190,39 @@ async def update_organization_status(
         raise HTTPException(
             status_code=500,
             detail="Database operation failed"
+        )
+
+
+@router.post(
+    "/{organization_id}/admins",
+    response_model=OrganizationAdminResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create Organization Admin"
+)
+async def create_organization_admin(
+    organization_id: str,
+    request: OrganizationAdminCreateRequest,
+    db=Depends(get_database)
+):
+
+    service = OrganizationAdminService(db)
+
+    try:
+        return await service.create_admin(
+            organization_id=organization_id,
+            full_name=request.full_name,
+            email=str(request.email),
+            password=request.password
+        )
+
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(error)
+        )
+
+    except RuntimeError as error:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(error)
         )

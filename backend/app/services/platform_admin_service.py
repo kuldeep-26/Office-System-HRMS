@@ -35,7 +35,7 @@ class PlatformAdminService:
 
         if len(password) < 10:
             raise ValueError(
-                "Password must contain at least 12 characters"
+                "Password must contain at least 10 characters"
             )
 
         # 2. Ensure this is the first platform admin

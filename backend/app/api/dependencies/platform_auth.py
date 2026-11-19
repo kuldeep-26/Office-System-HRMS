@@ -68,6 +68,13 @@ async def get_current_platform_admin(
             detail="Platform admin account is inactive"
         )
 
+    # Verify platform administrator role
+    if admin.get("role") != "super_admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient platform privileges"
+        )
+
     # 7. Return safe admin information
     return {
         "id": str(admin["_id"]),
