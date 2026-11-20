@@ -13,6 +13,8 @@ from app.api.routes.rbac_test import router as rbac_test_router
 from app.api.routes.employees import router as employees_router
 from app.api.routes.departments import router as departments_router
 from app.api.routes.designations import router as designations_router
+from app.api.routes.branches import router as branches_router
+from app.api.routes.documents import router as documents_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -94,5 +96,15 @@ app.include_router(
 
 app.include_router(
     designations_router,
+    prefix="/api/v1"
+)
+
+app.include_router(
+    branches_router,
+    prefix="/api/v1"
+)
+
+app.include_router(
+    documents_router,
     prefix="/api/v1"
 )

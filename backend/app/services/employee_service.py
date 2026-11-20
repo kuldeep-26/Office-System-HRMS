@@ -23,7 +23,14 @@ class EmployeeService:
         if not organization:
             raise ValueError("Organization not found or inactive")
 
-    async def _validate_references(self, organization_id, data):
+    async def _validate_references(
+        self,
+        organization_id,
+        data,
+        employee_id=None
+    ):
+        organization_object_id = ObjectId(organization_id)
+
         reference_collections = {
             "user_id": "users",
             "department_id": "departments",
@@ -31,6 +38,7 @@ class EmployeeService:
             "branch_id": "branches"
         }
 
+        # Validate user, department, designation and branch
         for field, collection_name in reference_collections.items():
             reference_id = data.get(field)
 
@@ -42,7 +50,7 @@ class EmployeeService:
 
             query = {
                 "_id": ObjectId(reference_id),
-                "organization_id": ObjectId(organization_id)
+                "organization_id": organization_object_id
             }
 
             document = await self.db[collection_name].find_one(query)
@@ -55,16 +63,57 @@ class EmployeeService:
             if document.get("status") != "active":
                 raise ValueError(f"The linked {field} is inactive")
 
+            # A user can only be linked to one employee
             if field == "user_id":
-                existing_employee = await self.db.employees.find_one({
-                    "organization_id": ObjectId(organization_id),
+                duplicate_query = {
+                    "organization_id": organization_object_id,
                     "user_id": ObjectId(reference_id)
-                })
+                }
+
+                # Exclude the employee currently being updated
+                if employee_id is not None:
+                    duplicate_query["_id"] = {
+                        "$ne": ObjectId(employee_id)
+                    }
+
+                existing_employee = await self.db.employees.find_one(
+                    duplicate_query
+                )
 
                 if existing_employee:
                     raise ValueError(
-                        "This user is already linked to an employee"
+                        "This user is already linked to another employee"
                     )
+
+        # Validate reporting manager
+        manager_id = data.get("reporting_manager_id")
+
+        if manager_id is not None:
+            if not ObjectId.is_valid(manager_id):
+                raise ValueError("Invalid reporting_manager_id")
+
+            manager_object_id = ObjectId(manager_id)
+
+            # An employee cannot report to themselves
+            if (
+                employee_id is not None
+                and manager_object_id == ObjectId(employee_id)
+            ):
+                raise ValueError(
+                    "An employee cannot be their own reporting manager"
+                )
+
+            manager = await self.db.employees.find_one({
+                "_id": manager_object_id,
+                "organization_id": organization_object_id,
+                "status": "active"
+            })
+
+            if not manager:
+                raise ValueError(
+                    "Reporting manager not found, inactive, "
+                    "or does not belong to this organization"
+                )
 
     @staticmethod
     def _serialize(employee):
@@ -77,23 +126,30 @@ class EmployeeService:
             "user_id",
             "department_id",
             "designation_id",
-            "branch_id"
+            "branch_id",
+            "reporting_manager_id"
         ):
             if employee.get(field) is not None:
                 employee[field] = str(employee[field])
 
         employee["id"] = employee.pop("_id")
+
         return employee
 
     async def create_employee(self, organization_id, employee_data):
         await self._validate_organization(organization_id)
-        await self._validate_references(organization_id, employee_data)
+
+        await self._validate_references(
+            organization_id,
+            employee_data
+        )
 
         try:
             employee = await self.repository.create(
                 organization_id,
                 employee_data
             )
+
             return self._serialize(employee)
 
         except DuplicateKeyError:
@@ -109,7 +165,12 @@ class EmployeeService:
 
         return self._serialize(employee)
 
-    async def get_all_employees(self, organization_id, skip=0, limit=20):
+    async def get_all_employees(
+        self,
+        organization_id,
+        skip=0,
+        limit=20
+    ):
         await self._validate_organization(organization_id)
 
         employees = await self.repository.get_all(
@@ -118,7 +179,10 @@ class EmployeeService:
             limit
         )
 
-        return [self._serialize(employee) for employee in employees]
+        return [
+            self._serialize(employee)
+            for employee in employees
+        ]
 
     async def update_employee(
         self,
@@ -138,7 +202,8 @@ class EmployeeService:
 
         await self._validate_references(
             organization_id,
-            update_data
+            update_data,
+            employee_id=employee_id
         )
 
         try:
@@ -147,6 +212,7 @@ class EmployeeService:
                 employee_id,
                 update_data
             )
+
             return self._serialize(employee)
 
         except DuplicateKeyError:

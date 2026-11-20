@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     JWT_ISSUER: str = "office-system"
     JWT_AUDIENCE: str = "office-system-api"
 
-    ACCESS_TOKEN_MINUTES: int = 15
+    ACCESS_TOKEN_MINUTES: int = 30
     REFRESH_TOKEN_DAYS: int = 30
 
     model_config = SettingsConfigDict(

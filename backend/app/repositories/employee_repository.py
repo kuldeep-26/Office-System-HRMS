@@ -1,5 +1,6 @@
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+
 from bson import ObjectId
 
 
@@ -8,25 +9,39 @@ class EmployeeRepository:
     def __init__(self, db):
         self.collection = db.employees
 
-    # CREATE EMPLOYEE
-    async def create(self, organization_id: str, employee_data: dict):
-
-        org_id = ObjectId(organization_id)
+    # CONVERT REFERENCE IDS AND DATE FIELDS
+    def _prepare_employee_data(self, employee_data: dict):
 
         data = employee_data.copy()
 
-        data["organization_id"] = org_id
-
+        # Convert reference IDs into MongoDB ObjectIds
         for field in (
             "user_id",
             "department_id",
             "designation_id",
-            "branch_id"
+            "branch_id",
+            "reporting_manager_id"
         ):
             value = data.get(field)
 
             if value is not None:
                 data[field] = ObjectId(value)
+
+        # Convert Python date objects into ISO date strings
+        for field in ("date_of_birth", "joining_date"):
+            value = data.get(field)
+
+            if isinstance(value, date):
+                data[field] = value.isoformat()
+
+        return data
+
+    # CREATE EMPLOYEE
+    async def create(self, organization_id: str, employee_data: dict):
+
+        data = self._prepare_employee_data(employee_data)
+
+        data["organization_id"] = ObjectId(organization_id)
 
         now = datetime.now(timezone.utc)
 
@@ -85,18 +100,7 @@ class EmployeeRepository:
         if not ObjectId.is_valid(employee_id):
             return None
 
-        data = update_data.copy()
-
-        for field in (
-            "user_id",
-            "department_id",
-            "designation_id",
-            "branch_id"
-        ):
-            value = data.get(field)
-
-            if value is not None:
-                data[field] = ObjectId(value)
+        data = self._prepare_employee_data(update_data)
 
         data["updated_at"] = datetime.now(timezone.utc)
 
