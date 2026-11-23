@@ -122,23 +122,32 @@ async def get_current_organization_user(
             "scope": "organization"
         }).to_list(length=None)
 
-    # 9. Collect permissions from assigned roles
+    # 9. Collect permissions and role names
     permissions = set()
+    role_names = set()
 
     for role in roles:
         permissions.update(
             role.get("permission_keys", [])
         )
 
+        role_names.add(role.get("name"))
+
     # 10. Return authenticated user context
     return {
         "id": str(user["_id"]),
         "organization_id": str(user["organization_id"]),
+        "employee_id": (
+            str(user["employee_id"])
+            if user.get("employee_id")
+            else None
+        ),
         "email": user["email"],
         "role_ids": [
             str(role_id)
             for role_id in user.get("role_ids", [])
         ],
+        "role_names": list(role_names),
         "permissions": permissions,
         "status": user["status"]
     }

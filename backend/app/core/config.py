@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_MINUTES: int = 30
     REFRESH_TOKEN_DAYS: int = 30
 
+    # Face Photo Encryption
+    FACE_ENCRYPTION_KEY: str | None = None
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

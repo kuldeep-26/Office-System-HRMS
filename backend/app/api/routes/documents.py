@@ -23,6 +23,46 @@ router = APIRouter(
 )
 
 
+def check_document_access(current_user: dict, employee_id: str, action: str):
+    """
+    Verify whether the authenticated user can access
+    documents belonging to the requested employee.
+    """
+
+    role_names = set(current_user.get("role_names", []))
+
+    # Organization-wide document access for HR/Admin
+    if role_names.intersection({"org_admin", "hr_manager"}):
+        return
+
+    # Employees can only read their own documents
+    if "employee" in role_names:
+        if action != "read":
+            raise HTTPException(
+                status_code=403,
+                detail="Employees cannot perform this document action"
+            )
+
+        if not current_user.get("employee_id"):
+            raise HTTPException(
+                status_code=403,
+                detail="No employee profile is linked to this account"
+            )
+
+        if current_user["employee_id"] != employee_id:
+            raise HTTPException(
+                status_code=403,
+                detail="You can only access your own documents"
+            )
+
+        return
+
+    raise HTTPException(
+        status_code=403,
+        detail="You are not authorized to access employee documents"
+    )
+
+
 # --------------------------------------------------
 # UPLOAD EMPLOYEE DOCUMENT
 # --------------------------------------------------
@@ -53,6 +93,12 @@ async def upload_employee_document(
             detail="Invalid document category"
         )
 
+    check_document_access(
+        current_user,
+        employee_id,
+        "upload"
+    )
+
     service = DocumentService(db)
 
     return await service.upload_document(
@@ -79,6 +125,12 @@ async def get_employee_documents(
         require_permission("document:read")
     )
 ):
+
+    check_document_access(
+        current_user,
+        employee_id,
+        "read"
+    )
 
     service = DocumentService(db)
 
@@ -110,6 +162,12 @@ async def download_document(
         document_id=document_id
     )
 
+    check_document_access(
+        current_user,
+        str(document["employee_id"]),
+        "read"
+    )
+
     return FileResponse(
         path=file_path,
         filename=document["original_filename"],
@@ -131,6 +189,17 @@ async def delete_document(
 ):
 
     service = DocumentService(db)
+
+    document = await service.get_document(
+        organization_id=current_user["organization_id"],
+        document_id=document_id
+    )
+
+    check_document_access(
+        current_user,
+        str(document["employee_id"]),
+        "delete"
+    )
 
     return await service.delete_document(
         organization_id=current_user["organization_id"],

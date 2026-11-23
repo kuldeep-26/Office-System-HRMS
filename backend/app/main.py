@@ -15,6 +15,8 @@ from app.api.routes.departments import router as departments_router
 from app.api.routes.designations import router as designations_router
 from app.api.routes.branches import router as branches_router
 from app.api.routes.documents import router as documents_router
+from app.api.routes.employee_accounts import router as employee_accounts_router
+from app.api.routes.face_enrollments import router as face_enrollments_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -90,6 +92,11 @@ app.include_router(
 )
 
 app.include_router(
+    employee_accounts_router,
+    prefix="/api/v1"
+)
+
+app.include_router(
     departments_router,
     prefix="/api/v1"
 )
@@ -106,5 +113,10 @@ app.include_router(
 
 app.include_router(
     documents_router,
+    prefix="/api/v1"
+)
+
+app.include_router(
+    face_enrollments_router,
     prefix="/api/v1"
 )
