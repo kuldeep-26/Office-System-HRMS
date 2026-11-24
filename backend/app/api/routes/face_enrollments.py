@@ -10,7 +10,8 @@ from fastapi import (
 
 from app.db.dependencies import get_database
 from app.api.dependencies.permissions import (
-    get_current_organization_user
+    get_current_organization_user,
+    require_permission
 )
 from app.schemas.face_enrollment import (
     FaceEnrollmentConsentCreate,
@@ -26,6 +27,12 @@ router = APIRouter(
     tags=["Face Enrollment"]
 )
 
+NO_STORE_HEADERS = {
+    "Cache-Control": "no-store, private",
+    "Pragma": "no-cache",
+    "X-Content-Type-Options": "nosniff"
+}
+
 
 # --------------------------------------------------
 # RECORD EMPLOYEE FACE ENROLLMENT CONSENT
@@ -39,12 +46,15 @@ router = APIRouter(
 async def record_face_enrollment_consent(
     employee_id: str,
     consent_data: FaceEnrollmentConsentCreate,
+    response: Response,
     db=Depends(get_database),
     current_user: dict = Depends(
         get_current_organization_user
     )
 ):
 
+    response.headers.update(NO_STORE_HEADERS)
+    
     service = FaceEnrollmentService(db)
 
     return await service.record_consent(
@@ -67,12 +77,15 @@ async def record_face_enrollment_consent(
 )
 async def upload_employee_face_photo(
     employee_id: str,
+    response: Response,
     file: UploadFile = File(...),
     db=Depends(get_database),
     current_user: dict = Depends(
         get_current_organization_user
     )
 ):
+
+    response.headers.update(NO_STORE_HEADERS)
 
     service = FaceEnrollmentService(db)
 
@@ -95,11 +108,14 @@ async def upload_employee_face_photo(
 )
 async def revoke_face_enrollment_consent(
     employee_id: str,
+    response: Response,
     db=Depends(get_database),
     current_user: dict = Depends(
         get_current_organization_user
     )
 ):
+
+    response.headers.update(NO_STORE_HEADERS)
 
     service = FaceEnrollmentService(db)
 
@@ -142,4 +158,37 @@ async def retrieve_employee_face_photo(
             "Cache-Control": "no-store, private",
             "X-Content-Type-Options": "nosniff"
         }
+    )
+
+
+
+
+# --------------------------------------------------
+# LIST ORGANIZATION FACE ENROLLMENT STATUSES
+# --------------------------------------------------
+
+@router.get(
+    "/organization/statuses",
+    status_code=status.HTTP_200_OK
+)
+async def list_organization_face_enrollments(
+    enrollment_status: str | None = None,
+    skip: int = 0,
+    limit: int = 50,
+    response: Response = None,
+    db=Depends(get_database),
+    current_user: dict = Depends(
+        require_permission("face_enrollment:read")
+    )
+):
+
+    response.headers.update(NO_STORE_HEADERS)
+
+    service = FaceEnrollmentService(db)
+
+    return await service.list_organization_enrollments(
+        organization_id=current_user["organization_id"],
+        enrollment_status=enrollment_status,
+        skip=skip,
+        limit=limit
     )

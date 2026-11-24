@@ -1,4 +1,4 @@
-
+import logging
 from datetime import datetime, timezone
 
 from bson import ObjectId
@@ -14,6 +14,8 @@ from app.core.face_storage import (
     get_face_photo
 )
 
+
+logger = logging.getLogger(__name__)
 
 class FaceEnrollmentService:
 
@@ -315,8 +317,12 @@ class FaceEnrollmentService:
             # Remove encrypted file if database update fails
             try:
                 delete_face_photo(stored_filename)
+
             except Exception:
-                pass
+                logger.exception(
+                    "Failed to clean up encrypted face photo "
+                    "after enrollment update failure"
+                )
 
             raise
 
@@ -398,13 +404,43 @@ class FaceEnrollmentService:
 
             except HTTPException as exc:
                 if exc.status_code != 404:
+                    logger.exception(
+                        "Face photo cleanup failed after consent revocation"
+                    )
+
                     raise HTTPException(
                         status_code=500,
                         detail=(
                             "Consent was revoked, but photo cleanup failed. "
-                            "Administrator cleanup is required."
+                            "Cleanup is pending administrator action."
                         )
                     )
+
+            except Exception:
+                logger.exception(
+                    "Unexpected error during face photo cleanup"
+                )
+
+                raise HTTPException(
+                    status_code=500,
+                    detail=(
+                        "Consent was revoked, but photo cleanup failed. "
+                        "Cleanup is pending administrator action."
+                    )
+                )
+
+            # Clear the pending cleanup marker after successful deletion
+            marker_cleared = await self.repository.clear_photo_cleanup_marker(
+                organization_id=organization_id,
+                enrollment_id=str(enrollment["_id"])
+            )
+
+            if not marker_cleared:
+                logger.warning(
+                    "Face photo cleanup marker could not be cleared for "
+                    "enrollment ID: %s",
+                    enrollment["_id"]
+                )
 
         return self._serialize(result["enrollment"])
 
@@ -481,4 +517,62 @@ class FaceEnrollmentService:
         image_content = get_face_photo(stored_filename)
 
         return image_content
+
+    
+    # LIST ORGANIZATION FACE ENROLLMENTS
+    async def list_organization_enrollments(
+        self,
+        organization_id,
+        enrollment_status=None,
+        skip=0,
+        limit=50
+    ):
+
+        # Validate organization
+        await self._validate_organization(organization_id)
+
+        # Validate pagination
+        if skip < 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Skip cannot be negative"
+            )
+
+        if limit < 1 or limit > 100:
+            raise HTTPException(
+                status_code=400,
+                detail="Limit must be between 1 and 100"
+            )
+
+        # Validate enrollment status
+        allowed_statuses = {
+            "consent_pending",
+            "consented",
+            "photo_uploaded",
+            "enrolled",
+            "rejected",
+            "revoked"
+        }
+
+        if (
+            enrollment_status is not None
+            and enrollment_status not in allowed_statuses
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid enrollment status"
+            )
+
+        # Retrieve organization-scoped records
+        enrollments = await self.repository.get_by_organization(
+            organization_id=organization_id,
+            skip=skip,
+            limit=limit,
+            enrollment_status=enrollment_status
+        )
+
+        return [
+            self._serialize(enrollment)
+            for enrollment in enrollments
+        ]
 

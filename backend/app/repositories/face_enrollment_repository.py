@@ -65,6 +65,43 @@ class FaceEnrollmentRepository:
         })
 
     
+    # GET ALL FACE ENROLLMENTS IN ORGANIZATION
+    async def get_by_organization(
+        self,
+        organization_id: str,
+        skip: int = 0,
+        limit: int = 50,
+        enrollment_status: str | None = None
+    ):
+
+        if not ObjectId.is_valid(organization_id):
+            return []
+
+        query = {
+            "organization_id": ObjectId(organization_id)
+        }
+
+        if enrollment_status:
+            query["enrollment_status"] = enrollment_status
+
+        cursor = (
+            self.collection
+            .find(
+                query,
+                {
+                    "stored_filename": 0,
+                    "consent_history": 0
+                }
+            )
+            .sort("updated_at", -1)
+            .skip(skip)
+            .limit(limit)
+        )
+
+        return await cursor.to_list(length=limit)
+
+
+    
     # ATTACH ENCRYPTED FACE PHOTO
     async def attach_photo(
         self,
@@ -146,6 +183,26 @@ class FaceEnrollmentRepository:
 
         now = datetime.now(timezone.utc)
 
+        update_fields = {
+            "consent_given": False,
+            "enrollment_status": "revoked",
+            "revoked_at": now,
+            "updated_at": now
+        }
+
+        unset_fields = {
+            "stored_filename": "",
+            "content_type": "",
+            "file_size": "",
+            "photo_uploaded_at": ""
+        }
+
+        # Preserve the filename until encrypted-file cleanup succeeds.
+        if stored_filename:
+            update_fields["photo_cleanup_pending_filename"] = stored_filename
+        else:
+            unset_fields["photo_cleanup_pending_filename"] = ""
+
         result = await self.collection.update_one(
             {
                 "_id": ObjectId(enrollment_id),
@@ -156,21 +213,19 @@ class FaceEnrollmentRepository:
                 }
             },
             {
-                "$set": {
-                    "consent_given": False,
-                    "enrollment_status": "revoked",
-                    "revoked_at": now,
-                    "updated_at": now
+                "$set": update_fields,
+                "$push": {
+                    "consent_history": {
+                        "action": "revoked",
+                        "consent_version": existing.get("consent_version"),
+                        "consented_by": existing.get("consented_by"),
+                        "revoked_at": now,
+                        "purpose": existing.get("purpose")
+                    }
                 },
-                "$unset": {
-                    "stored_filename": "",
-                    "content_type": "",
-                    "file_size": "",
-                    "photo_uploaded_at": ""
-                }
+                "$unset": unset_fields
             }
         )
-
         if result.matched_count == 0:
             return None
 
@@ -283,3 +338,34 @@ class FaceEnrollmentRepository:
             organization_id,
             enrollment_id
         )
+
+        # CLEAR FACE PHOTO CLEANUP MARKER
+    async def clear_photo_cleanup_marker(
+        self,
+        organization_id: str,
+        enrollment_id: str
+    ):
+
+        if not ObjectId.is_valid(organization_id):
+            return False
+
+        if not ObjectId.is_valid(enrollment_id):
+            return False
+
+        result = await self.collection.update_one(
+            {
+                "_id": ObjectId(enrollment_id),
+                "organization_id": ObjectId(organization_id),
+                "enrollment_status": "revoked"
+            },
+            {
+                "$unset": {
+                    "photo_cleanup_pending_filename": ""
+                },
+                "$set": {
+                    "updated_at": datetime.now(timezone.utc)
+                }
+            }
+        )
+
+        return result.modified_count > 0

@@ -1,6 +1,7 @@
-
+import warnings
 import os
 import uuid
+import logging
 
 from io import BytesIO
 from pathlib import Path
@@ -11,6 +12,8 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 
 from app.core.config import settings
 
+
+logger = logging.getLogger(__name__)
 
 # --------------------------------------------------
 # PROJECT PATHS
@@ -72,43 +75,51 @@ def normalize_face_image(content: bytes) -> bytes:
     as JPEG to remove unnecessary metadata.
     """
 
-    Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
-
     try:
-        with Image.open(BytesIO(content)) as image:
-
-            if image.format not in {"JPEG", "PNG"}:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Only JPEG and PNG images are allowed"
-                )
-
-            if image.width * image.height > MAX_IMAGE_PIXELS:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Image dimensions are too large"
-                )
-
-            image.verify()
-
-        # Reopen after verify because verify invalidates
-        # the original image object.
-        with Image.open(BytesIO(content)) as image:
-
-            image = ImageOps.exif_transpose(image)
-
-            image = image.convert("RGB")
-
-            output = BytesIO()
-
-            image.save(
-                output,
-                format="JPEG",
-                quality=90,
-                optimize=True
+        with warnings.catch_warnings():
+            warnings.simplefilter(
+                "error",
+                Image.DecompressionBombWarning
             )
 
-            return output.getvalue()
+            with Image.open(BytesIO(content)) as image:
+
+                if image.format not in {"JPEG", "PNG"}:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Only JPEG and PNG images are allowed"
+                    )
+
+                if image.width * image.height > MAX_IMAGE_PIXELS:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Image dimensions are too large"
+                    )
+
+                image.verify()
+
+            # Reopen after verify
+            with Image.open(BytesIO(content)) as image:
+
+                if image.width * image.height > MAX_IMAGE_PIXELS:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Image dimensions are too large"
+                    )
+
+                image = ImageOps.exif_transpose(image)
+                image = image.convert("RGB")
+
+                output = BytesIO()
+
+                image.save(
+                    output,
+                    format="JPEG",
+                    quality=90,
+                    optimize=True
+                )
+
+                return output.getvalue()
 
     except HTTPException:
         raise
@@ -124,7 +135,6 @@ def normalize_face_image(content: bytes) -> bytes:
             status_code=400,
             detail="Invalid or unsupported image"
         )
-
 
 # --------------------------------------------------
 # SAVE ENCRYPTED FACE PHOTO
@@ -186,12 +196,29 @@ async def save_face_photo(file: UploadFile):
         )
 
         file_path = FACE_STORAGE / stored_filename
+        temp_path = FACE_STORAGE / f"{uuid.uuid4().hex}.tmp"
 
         try:
-            with open(file_path, "xb") as destination:
+            # Write encrypted content to a temporary file first
+            with open(temp_path, "xb") as destination:
                 destination.write(encrypted_content)
+                destination.flush()
+                os.fsync(destination.fileno())
+
+            # Atomically move the completed file into its final location
+            os.replace(temp_path, file_path)
 
         except OSError:
+            # Clean up incomplete files
+            for path in (temp_path, file_path):
+                try:
+                    if path.exists():
+                        path.unlink()
+                except OSError:
+                    logger.exception(
+                        "Unable to clean up incomplete face photo file"
+                    )
+
             raise HTTPException(
                 status_code=500,
                 detail="Unable to save encrypted face photo"
@@ -266,6 +293,9 @@ def get_face_photo(stored_filename: str) -> bytes:
 # --------------------------------------------------
 
 def delete_face_photo(stored_filename: str):
+    """
+    Safely delete an encrypted face photo.
+    """
 
     if (
         not stored_filename
@@ -285,16 +315,20 @@ def delete_face_photo(stored_filename: str):
             detail="Invalid face photo path"
         )
 
-    if not file_path.is_file():
+    try:
+        file_path.unlink()
+
+    except FileNotFoundError:
         raise HTTPException(
             status_code=404,
             detail="Face photo not found"
         )
 
-    try:
-        os.remove(file_path)
-
     except OSError:
+        logger.exception(
+            "Unable to delete encrypted face photo"
+        )
+
         raise HTTPException(
             status_code=500,
             detail="Unable to delete face photo"

@@ -46,6 +46,8 @@ ROLE_PERMISSION_MAPPING = {
         "project:read",
         "project:update",
         "project:delete",
+
+        "face_enrollment:read",
     ],
 
     "hr_manager": [
@@ -66,6 +68,8 @@ ROLE_PERMISSION_MAPPING = {
 
         "document:upload",
         "document:read",
+
+        "face_enrollment:read",
     ],
 
     "manager": [

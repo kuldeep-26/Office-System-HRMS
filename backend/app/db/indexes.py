@@ -116,6 +116,19 @@ async def create_database_indexes(db):
         name="attendance_by_org_employee_time"
     )
 
+    # Prevent multiple open attendance sessions
+    await db.attendance_records.create_index(
+        [
+            ("organization_id", 1),
+            ("employee_id", 1)
+        ],
+        unique=True,
+        partialFilterExpression={
+            "session_open": True
+        },
+        name="unique_open_attendance_session_per_employee"
+    )
+
     await db.attendance_records.create_index(
         [
             ("organization_id", 1),
@@ -128,7 +141,8 @@ async def create_database_indexes(db):
         name="unique_attendance_idempotency"
     )
 
-    # 11. Face enrollments
+        # 11. Face enrollments
+
     await db.face_enrollments.create_index(
         [
             ("organization_id", 1),
@@ -138,12 +152,22 @@ async def create_database_indexes(db):
         name="unique_face_enrollment_per_employee"
     )
 
+    # Organization enrollment status filtering
     await db.face_enrollments.create_index(
         [
             ("organization_id", 1),
-            ("status", 1)
+            ("enrollment_status", 1)
         ],
-        name="face_enrollment_by_org_status"
+        name="face_enrollment_by_org_enrollment_status"
+    )
+
+    # Organization enrollment listing and sorting
+    await db.face_enrollments.create_index(
+        [
+            ("organization_id", 1),
+            ("updated_at", -1)
+        ],
+        name="face_enrollment_by_org_updated_at"
     )
 
     # 12. Leave requests
