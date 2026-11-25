@@ -24,7 +24,9 @@ ROLE_PERMISSION_MAPPING = {
         "branch:delete",
 
         "attendance:read",
+        "attendance:organization_read",
         "attendance:manage",
+        "attendance:self_service",
 
         "leave:create",
         "leave:read",
@@ -60,7 +62,9 @@ ROLE_PERMISSION_MAPPING = {
         "branch:read",
 
         "attendance:read",
+        "attendance:organization_read",
         "attendance:manage",
+        "attendance:self_service",
 
         "leave:create",
         "leave:read",
@@ -79,6 +83,9 @@ ROLE_PERMISSION_MAPPING = {
         "branch:read",
 
         "attendance:read",
+        "attendance:organization_read",
+        "attendance:self_service",
+        
         "leave:read",
         "leave:approve",
 
@@ -94,6 +101,7 @@ ROLE_PERMISSION_MAPPING = {
     "employee": [
         "employee:read",
         "attendance:read",
+        "attendance:self_service",
         "leave:create",
         "leave:read",
         "document:upload",

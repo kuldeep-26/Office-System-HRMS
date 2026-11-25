@@ -116,6 +116,27 @@ async def create_database_indexes(db):
         name="attendance_by_org_employee_time"
     )
 
+    # Employee attendance history with deterministic ordering
+    await db.attendance_records.create_index(
+        [
+            ("organization_id", 1),
+            ("employee_id", 1),
+            ("event_time", -1),
+            ("_id", -1)
+        ],
+        name="attendance_employee_history_order"
+    )
+
+    # Organization attendance history with deterministic ordering
+    await db.attendance_records.create_index(
+        [
+            ("organization_id", 1),
+            ("event_time", -1),
+            ("_id", -1)
+        ],
+        name="attendance_org_history_order"
+    )
+
     # Prevent multiple open attendance sessions
     await db.attendance_records.create_index(
         [

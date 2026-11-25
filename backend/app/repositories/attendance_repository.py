@@ -2,7 +2,6 @@
 from datetime import datetime, timezone
 
 from bson import ObjectId
-from pymongo.errors import DuplicateKeyError
 
 
 class AttendanceRepository:
@@ -10,33 +9,37 @@ class AttendanceRepository:
     def __init__(self, db):
         self.collection = db.attendance_records
 
+
     # CREATE ATTENDANCE EVENT
     async def create(self, attendance_data: dict, session=None):
         data = attendance_data.copy()
         data["organization_id"] = ObjectId(data["organization_id"])
         data["employee_id"] = ObjectId(data["employee_id"])
 
-        now = datetime.now(timezone.utc)
-        data["created_at"] = now
+        created_by_user_id = data.get("created_by_user_id")
 
-        try:
-            insert_options = {}
-            if session is not None:
-                insert_options["session"] = session
+        if not ObjectId.is_valid(created_by_user_id):
+            raise ValueError("Invalid attendance actor user ID")
 
-            result = await self.collection.insert_one(
-                data,
-                **insert_options
-            )
+        data["created_by_user_id"] = ObjectId(created_by_user_id)
 
-        except DuplicateKeyError:
-            return None
+        data["created_at"] = datetime.now(timezone.utc)
+
+        insert_options = {}
+        if session is not None:
+            insert_options["session"] = session
+
+        result = await self.collection.insert_one(
+            data,
+            **insert_options
+        )
 
         return await self.get_by_id(
             organization_id=str(data["organization_id"]),
             attendance_id=str(result.inserted_id),
             session=session
         )
+
 
     # GET ATTENDANCE EVENT BY ID
     async def get_by_id(
@@ -93,7 +96,10 @@ class AttendanceRepository:
                 },
                 **find_options
             )
-            .sort("event_time", -1)
+            .sort([
+                ("event_time", -1),
+                ("_id", -1)
+            ])
             .skip(skip)
             .limit(limit)
         )
@@ -213,7 +219,10 @@ class AttendanceRepository:
                 },
                 **find_options
             )
-            .sort("event_time", -1)
+            .sort([
+                ("event_time", -1),
+                ("_id", -1)
+            ])
             .skip(skip)
             .limit(limit)
         )

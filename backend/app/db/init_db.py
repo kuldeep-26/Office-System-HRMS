@@ -66,8 +66,10 @@ async def seed_system_permissions(db):
         ("branch:delete", "branches", "Delete branches"),
 
         # Attendance
-        ("attendance:read", "attendance", "View attendance"),
-        ("attendance:manage", "attendance", "Manage attendance"),
+        ("attendance:read", "attendance", "View permitted attendance records"),
+        ("attendance:organization_read", "attendance", "View organization-wide attendance"),
+        ("attendance:self_service", "attendance", "Check in and check out for oneself"),
+        ("attendance:manage", "attendance", "Manage organization attendance"),
 
         # Leave
         ("leave:create", "leave", "Create leave requests"),
