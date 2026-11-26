@@ -162,7 +162,55 @@ async def create_database_indexes(db):
         name="unique_attendance_idempotency"
     )
 
-        # 11. Face enrollments
+    # Ensure one attendance event per applied correction request
+    await db.attendance_records.create_index(
+        [
+            ("organization_id", 1),
+            ("correction_id", 1)
+        ],
+        unique=True,
+        partialFilterExpression={
+            "correction_id": {"$type": "objectId"}
+        },
+        name="unique_attendance_event_per_correction"
+    )
+
+
+    # 11. Attendance corrections
+
+    # Employee correction history
+    await db.attendance_corrections.create_index(
+        [
+            ("organization_id", 1),
+            ("employee_id", 1),
+            ("created_at", -1),
+            ("_id", -1)
+        ],
+        name="attendance_corrections_by_employee"
+    )
+
+    # HR correction review queue
+    await db.attendance_corrections.create_index(
+        [
+            ("organization_id", 1),
+            ("status", 1),
+            ("created_at", -1),
+            ("_id", -1)
+        ],
+        name="attendance_corrections_by_org_status"
+    )
+
+    # Original attendance event lookup
+    await db.attendance_corrections.create_index(
+        [
+            ("organization_id", 1),
+            ("original_event_id", 1)
+        ],
+        name="attendance_corrections_by_original_event"
+    )
+
+
+        # 12. Face enrollments
 
     await db.face_enrollments.create_index(
         [
@@ -191,7 +239,7 @@ async def create_database_indexes(db):
         name="face_enrollment_by_org_updated_at"
     )
 
-    # 12. Leave requests
+    # 13. Leave requests
     await db.leave_requests.create_index(
         [
             ("organization_id", 1),
@@ -210,7 +258,7 @@ async def create_database_indexes(db):
         name="leave_by_org_status"
     )
 
-    # 13. Payroll
+    # 14. Payroll
     await db.payroll_runs.create_index(
         [
             ("organization_id", 1),
@@ -220,7 +268,7 @@ async def create_database_indexes(db):
         name="payroll_by_org_period_status"
     )
 
-    # 14. Documents
+    # 15. Documents
     await db.documents.create_index(
         [
             ("organization_id", 1),
@@ -230,7 +278,7 @@ async def create_database_indexes(db):
         name="documents_by_owner_category"
     )
 
-    # 15. Tasks
+    # 16. Tasks
     await db.tasks.create_index(
         [
             ("organization_id", 1),
@@ -240,7 +288,7 @@ async def create_database_indexes(db):
         name="tasks_by_assignee_due_date"
     )
 
-    # 16. Projects
+    # 17. Projects
     await db.projects.create_index(
         [
             ("organization_id", 1),
@@ -249,7 +297,7 @@ async def create_database_indexes(db):
         name="projects_by_org_status"
     )
 
-    # 17. Notifications
+    # 18. Notifications
     await db.notifications.create_index(
         [
             ("organization_id", 1),
@@ -259,7 +307,7 @@ async def create_database_indexes(db):
         name="notifications_by_recipient"
     )
 
-    # 18. Refresh token sessions
+    # 19. Refresh token sessions
     await db.refresh_token_sessions.create_index(
         [("token_hash", 1)],
         unique=True,
@@ -274,7 +322,7 @@ async def create_database_indexes(db):
         name="refresh_sessions_by_user_expiry"
     )
 
-    # 19. Audit logs
+    # 20. Audit logs
     await db.audit_logs.create_index(
         [
             ("organization_id", 1),

@@ -297,7 +297,7 @@ class AttendanceService:
         if not 1 <= limit <= 100:
             raise ValueError("Limit must be between 1 and 100")
 
-        records = await self.repository.get_by_employee(
+        records = await self.repository.get_effective_by_employee(
             organization_id=organization_id,
             employee_id=employee_id,
             skip=skip,
@@ -322,7 +322,7 @@ class AttendanceService:
         if not 1 <= limit <= 100:
             raise ValueError("Limit must be between 1 and 100")
 
-        records = await self.repository.get_by_organization(
+        records = await self.repository.get_effective_by_organization(
             organization_id=organization_id,
             skip=skip,
             limit=limit

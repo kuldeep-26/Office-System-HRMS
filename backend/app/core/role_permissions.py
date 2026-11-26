@@ -28,6 +28,9 @@ ROLE_PERMISSION_MAPPING = {
         "attendance:manage",
         "attendance:self_service",
 
+        "attendance:correction_read",
+        "attendance:correction_review",
+
         "leave:create",
         "leave:read",
         "leave:approve",
@@ -66,6 +69,9 @@ ROLE_PERMISSION_MAPPING = {
         "attendance:manage",
         "attendance:self_service",
 
+        "attendance:correction_read",
+        "attendance:correction_review",
+
         "leave:create",
         "leave:read",
         "leave:approve",
@@ -102,6 +108,8 @@ ROLE_PERMISSION_MAPPING = {
         "employee:read",
         "attendance:read",
         "attendance:self_service",
+        "attendance:correction_create",
+        "attendance:correction_read",
         "leave:create",
         "leave:read",
         "document:upload",

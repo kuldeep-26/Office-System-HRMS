@@ -71,6 +71,10 @@ async def seed_system_permissions(db):
         ("attendance:self_service", "attendance", "Check in and check out for oneself"),
         ("attendance:manage", "attendance", "Manage organization attendance"),
 
+        ("attendance:correction_create", "attendance", "Submit attendance correction requests"),
+        ("attendance:correction_read", "attendance", "View attendance correction requests"),
+        ("attendance:correction_review", "attendance", "Approve or reject attendance correction requests"),
+
         # Leave
         ("leave:create", "leave", "Create leave requests"),
         ("leave:read", "leave", "View leave requests"),
